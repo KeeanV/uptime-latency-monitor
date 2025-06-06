@@ -1,0 +1,20 @@
+{
+  "name": "uptime-latency-monitor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "backend/index.js",
+  "scripts": {
+    "start": "node backend/index.js",
+    "ping": "node scripts/pingTargets.js",
+    "dev": "nodemon backend/index.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "express": "^5.1.0"
+  }
+}
