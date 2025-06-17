@@ -1,31 +1,43 @@
-const axios = require('axios');
+const fetch = require('node-fetch');
+const supabase = require('../lib/supabaseClient');
+const { URL } = require('url');
 
+async function checkTarget(target) {
+  const { id, url, expected_status } = target;
+  let status_code = null;
+  let latency_ms = null;
+  let is_up = false;
+  let error_message = null;
 
-const targets = [
-  { url: '', expectedStatus: 200 },
-];
-
-(async () => {
-  for (const target of targets) {
+  try {
     const start = Date.now();
+    const res = await fetch(url);
+    const end = Date.now();
 
-    try {
-      const response = await axios.get(target.url);
-      const latency = Date.now() - start;
-
-      if (response.status === target.expectedStatus) {
-        console.log(`[OK] ${target.url} responded in ${latency}ms`);
-      } else {
-        console.log(`[WARN] ${target.url} returned unexpected status ${response.status} (expected ${target.expectedStatus})`);
-      }
-
-      // TODO: Save success result and latency to database
-
-    } catch (err) {
-      const latency = Date.now() - start;
-      console.log(`[FAIL] ${target.url} failed after ${latency}ms: ${err.message}`);
-
-      // TODO: Save failure result to database + trigger alert
-    }
+    status_code = res.status;
+    latency_ms = end - start;
+    is_up = res.status === expected_status;
+  } catch (err) {
+    error_message = err.message;
   }
-})();
+
+  await supabase.from('logs').insert({
+    target_id: id,
+    response_time_ms: latency_ms,
+    status_code,
+    success: is_up,
+    timestamp: new Date(),
+  });
+}
+
+async function main() {
+  const { data: targets, error } = await supabase.from('targets').select('*');
+  if (error) {
+    console.error('Failed to fetch targets:', error);
+    return;
+  }
+
+  await Promise.all(targets.map(checkTarget));
+}
+
+main();
