@@ -1,43 +1,24 @@
-const fetch = require('node-fetch');
-const supabase = require('../lib/supabaseClient');
-const { URL } = require('url');
+const axios = require('axios');
 
-async function checkTarget(target) {
-  const { id, url, expected_status } = target;
-  let status_code = null;
-  let latency_ms = null;
-  let is_up = false;
-  let error_message = null;
-
+module.exports = async function pingTarget(url, expectedStatus = 200) {
+  const start = Date.now();
   try {
-    const start = Date.now();
-    const res = await fetch(url);
-    const end = Date.now();
-
-    status_code = res.status;
-    latency_ms = end - start;
-    is_up = res.status === expected_status;
-  } catch (err) {
-    error_message = err.message;
+    const response = await axios.get(url);
+    const latency = Date.now() - start;
+    return {
+      url,
+      status: response.status,
+      latency,
+      isUp: response.status === expectedStatus,
+    };
+  } catch (error) {
+    const latency = Date.now() - start;
+    return {
+      url,
+      status: error.response?.status || 0,
+      latency,
+      isUp: false,
+      error: error.message,
+    };
   }
-
-  await supabase.from('logs').insert({
-    target_id: id,
-    response_time_ms: latency_ms,
-    status_code,
-    success: is_up,
-    timestamp: new Date(),
-  });
-}
-
-async function main() {
-  const { data: targets, error } = await supabase.from('targets').select('*');
-  if (error) {
-    console.error('Failed to fetch targets:', error);
-    return;
-  }
-
-  await Promise.all(targets.map(checkTarget));
-}
-
-main();
+};
